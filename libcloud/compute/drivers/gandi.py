@@ -20,6 +20,7 @@ from datetime import datetime
 
 from libcloud.common.gandi import BaseGandiDriver, GandiException,\
     NetworkInterface, IPAddress, Disk
+from libcloud.compute.base import KeyPair
 from libcloud.compute.base import StorageVolume
 from libcloud.compute.types import NodeState, Provider
 from libcloud.compute.base import Node, NodeDriver
@@ -617,3 +618,36 @@ class GandiNodeDriver(BaseGandiDriver, NodeDriver):
         if self._wait_operation(op.object['id']):
             return True
         return False
+
+    def _to_key_pair(self, data):
+        key_pair = KeyPair(name=data['name'],
+                           fingerprint=data['fingerprint'],
+                           public_key=data.get('value', None),
+                           private_key=data.get('privatekey', None),
+                           driver=self, extra={'id': data['id']})
+        return key_pair
+
+    def _to_key_pairs(self, data):
+        return [self._to_key_pair(k) for k in data]
+
+    def list_key_pairs(self):
+        """
+        List registered key pairs.
+
+        :return:   A list of key par objects.
+        :rtype:   ``list`` of :class:`libcloud.compute.base.KeyPair`
+        """
+        kps = self.connection.request('hosting.ssh.list').object
+        return self._to_key_pairs(kps)
+
+    def get_key_pair(self, key_id):
+        """
+        Retrieve a single key pair.
+
+        :param key_id: ID of the key pair to retrieve.
+        :type key_id: ``int``
+
+        :rtype: :class:`.KeyPair`
+        """
+        kp = self.connection.request('hosting.ssh.info', key_id).object
+        return self._to_key_pair(kp)
