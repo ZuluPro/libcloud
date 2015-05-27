@@ -215,6 +215,9 @@ class GandiNodeDriver(BaseGandiDriver, NodeDriver):
         :keyword    inet_family: version of ip to use, default 4 (optional)
         :type       inet_family: ``int``
 
+        :keyword    keypairs: IDs of keypairs or Keypairs object
+        :type       keypairs: ``int`` or :class:`.KeyPair`
+
         :rtype: :class:`Node`
         """
 
@@ -233,6 +236,12 @@ class GandiNodeDriver(BaseGandiDriver, NodeDriver):
         if not size and not isinstance(size, NodeSize):
             raise GandiException(
                 1022, 'size must be a subclass of NodeSize')
+
+        keypairs = kwargs.get('keypairs', [])
+        keypair_ids = [
+            k if isinstance(k, int) else k.extra['id']
+            for k in keypairs
+        ]
 
         # If size name is in INSTANCE_TYPE we use new rating model
         instance = INSTANCE_TYPES.get(size.id)
@@ -254,6 +263,7 @@ class GandiNodeDriver(BaseGandiDriver, NodeDriver):
             'cores': cores,
             'bandwidth': int(size.bandwidth),
             'ip_version': kwargs.get('inet_family', 4),
+            'ssh_key': keypair_ids,
         }
 
         # Call create_from helper api. Return 3 operations : disk_create,
@@ -651,3 +661,35 @@ class GandiNodeDriver(BaseGandiDriver, NodeDriver):
         """
         kp = self.connection.request('hosting.ssh.info', key_id).object
         return self._to_key_pair(kp)
+
+    def import_key_pair_from_string(self, name, key_material):
+        """
+        Create a new key pair object.
+
+        :param name: Key pair name.
+        :type name: ``str``
+
+        :param key_material: Public key material.
+        :type key_material: ``str``
+
+        :return: Imported key pair object.
+        :rtype: :class:`.KeyPair`
+        """
+        params = {'name': name, 'value': key_material}
+        kp = self.connection.request('hosting.ssh.create', params).object
+        return self._to_key_pair(kp)
+
+    def delete_key_pair(self, key_pair):
+        """
+        Delete an existing key pair.
+
+        :param key_pair: Key pair object or ID.
+        :type key_pair: :class.KeyPair` or ``int``
+
+        :return:   True of False based on success of Keypair deletion
+        :rtype:    ``bool``
+        """
+        key_id = key_pair if isinstance(key_pair, int) \
+            else key_pair.extra['id']
+        success = self.connection.request('hosting.ssh.delete', key_id).object
+        return success
