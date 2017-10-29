@@ -211,9 +211,6 @@ class OneAndOneNodeDriver(NodeDriver):
         :param ex_ip: IP address
         :type ex_ip: `str`
 
-        :param ex_ssh_key: SSH Key
-        :type ex_ssh_key: `str`
-
         :param password: Password
         :type password: `str`
 
